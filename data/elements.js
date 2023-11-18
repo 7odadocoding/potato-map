@@ -1,4 +1,4 @@
-const elements = [
+export default [
    {
       time: 2,
       type: 'water',

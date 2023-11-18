@@ -18,14 +18,19 @@ export default class PotatoMap {
       canvas.height = height;
    }
 
-   drawBackground() {
-      this.image.onload = () => {
-         this.ctx.drawImage(this.image, 0, 0);
-         this.ctx.fillStyle = '#00000070';
-         this.ctx.fillRect(0, 0, this.width, this.height);
-         this.ctx.fillStyle = '#ffffff70';
-         this.ctx.fillRect(0, 0, this.width, this.height);
-      };
-      this.image.src = this.bg;
+   async drawBackground() {
+      await this.getImage(); // Wait for the image to load
+      this.ctx.drawImage(this.image, 0, 0);
+      this.ctx.fillStyle = '#00000070';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.fillStyle = '#ffffff70';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+   }
+
+   getImage() {
+      return new Promise((resolve, reject) => {
+         this.image.onload = () => resolve(this.image);
+         this.image.src = this.bg; // Set the image source here
+      });
    }
 }

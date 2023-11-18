@@ -1,5 +1,5 @@
 export default class Tile {
-   constructor(tileName, locX = 0 , locY = 0) {
+   constructor(tileName, locX = 0, locY = 0) {
       this.tilesPath = './assets/tiles/';
       this.tileName = tileName;
       this.image = new Image();
@@ -8,8 +8,11 @@ export default class Tile {
       this.locY = locY;
    }
 
-   getTileImage() {
-      this.image.src = this.imageSrc;
-      return this.image;
+   async getTileImage() {
+      const image = await new Promise((resolve) => {
+         this.image.src = this.imageSrc;
+         this.image.onload = () => resolve(this.image);
+      });
+      return image;
    }
 }

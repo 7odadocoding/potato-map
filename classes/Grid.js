@@ -1,3 +1,4 @@
+import ElementGrid from './ElementGrid.js';
 import Tile from './Tile.js';
 
 export default class Grid {
@@ -22,9 +23,14 @@ export default class Grid {
             [10, 6],
          ].map((pair) => pair.join())
       );
+      this.selectedTile = {
+         row: null,
+         col: null,
+      };
    }
 
    drawGridBackground() {
+      this.potatoMap.ctx.globalCompositeOperation = 'source-over';
       this.potatoMap.ctx.font = '40pt "Bree Serif"';
       this.potatoMap.ctx.fillStyle = '#000';
       this.potatoMap.ctx.fillText('Potato Map', this.locX, this.locY - 20, 200);
@@ -43,10 +49,7 @@ export default class Grid {
 
    async createGrid() {
       const baseTile = new Tile('empty');
-      const image = await new Promise((resolve) => {
-         const img = baseTile.getTileImage();
-         img.onload = () => resolve(img);
-      });
+      const image = await baseTile.getTileImage();
       this.drawGridBackground();
       for (let row = 0; row < 11; row++) {
          for (let col = 0; col < 11; col++) {
@@ -58,28 +61,30 @@ export default class Grid {
                this.potatoMap.ctx.drawImage(image, locX, locY, this.tilesW, this.tilesH);
                this.tiles[row][col] = new Tile('empty', locX, locY);
             }
-            this.trackCursor(locX, locY, row, col , this.tiles[row][col]);
+            this.trackCursor(locX, locY, row, col, this.tiles[row][col]);
          }
       }
       this.update();
    }
 
    async changeTile(x, y, tileName) {
-      const tile = new Tile(tileName);
-      await new Promise((resolve) => {
-         const img = tile.getTileImage();
-         img.onload = () => resolve(img);
-      });
-      this.tiles[x][y] = new Tile(tileName, this.tiles[x][y].locX, this.tiles[x][y].locY);
-      return tile;
+      let name = tileName || this.tiles[x][y].tileName;
+      this.tiles[x][y] = new Tile(name, this.tiles[x][y].locX, this.tiles[x][y].locY);
+      // console.log(this.tiles[x][y]);
+      let image = await this.tiles[x][y].getTileImage();
+      this.potatoMap.ctx.drawImage(
+         image,
+         this.tiles[x][y].locX,
+         this.tiles[x][y].locY,
+         this.tilesW,
+         this.tilesH
+      );
+      return this.tiles[x][y];
    }
 
    async drawMountain(locX, locY) {
       const mountainTile = new Tile('mountain', locX, locY);
-      const mountainImage = await new Promise((resolve) => {
-         const img = mountainTile.getTileImage();
-         img.onload = () => resolve(img);
-      });
+      const mountainImage = await mountainTile.getTileImage();
       this.potatoMap.ctx.drawImage(mountainImage, locX, locY, this.tilesW, this.tilesH);
       return mountainTile;
    }
@@ -88,38 +93,28 @@ export default class Grid {
       return this.mountainSet.has([row + 1, column + 1].join());
    }
 
-   trackCursor(locX, locY, row, col , tile) {
+   trackCursor(locX, locY, row, col, tile) {
       this.potatoMap.canvas.addEventListener('mousemove', (event) => {
          const rect = this.potatoMap.canvas.getBoundingClientRect();
          const x = event.clientX - rect.left;
          const y = event.clientY - rect.top;
 
-         if (
-            x >= locX &&
-            x <= locX + this.tilesW &&
-            y >= locY &&
-            y <= locY + this.tilesH
-         ) {
-            console.log(`Mouse over tile at row ${row} and column ${col} the Tile is ${tile.tileName}`);
-         }
+         if (x >= locX && x <= locX + this.tilesW && y >= locY && y <= locY + this.tilesH)
+            this.selectedTile = { row, col };
+         if ((x < this.locX || x > this.w) && (y < this.locY || y > this.h))
+            this.selectedTile = { row: null, col: null };
+         // if (this.selectedTile.row && this.selectedTile.col)
+         //    console.log(this.tiles[this.selectedTile.row][this.selectedTile.col]);
       });
    }
 
    update() {
-      // console.log(this.tiles);
-      this.drawGridBackground()
+      this.potatoMap.ctx.globalCompositeOperation = 'source-over';
       for (let row = 0; row < 11; row++) {
          for (let col = 0; col < 11; col++) {
             const tile = this.tiles[row][col];
             if (tile) {
-               const image = tile.getTileImage();
-               this.potatoMap.ctx.drawImage(
-                  image,
-                  tile.locX,
-                  tile.locY,
-                  this.tilesW,
-                  this.tilesH
-               );
+               this.changeTile(col, row);
             }
          }
       }
