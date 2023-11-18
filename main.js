@@ -9,5 +9,4 @@ potatoMap.drawBackground();
 
 const grid = new Grid(potatoMap, 50, 50, 40, 170);
 
-grid.createGrid();
-
+grid.createGrid()

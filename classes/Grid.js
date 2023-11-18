@@ -8,80 +8,121 @@ export default class Grid {
       this.margin = 3;
       this.tilesW = tilesW;
       this.tilesH = tilesH;
-      this.w = tilesW * 11 + this.margin * 2 + this.margin * 10;
-      this.h = tilesH * 11 + this.margin * 2 + this.margin * 10;
-      this.tiles = [[], [], [], [], [], [], [], [], [], [], []];
+      this.w = tilesW * 11 + this.margin * 12;
+      this.h = tilesH * 11 + this.margin * 12;
+      this.tiles = Array.from({ length: 11 }, () =>
+         Array.from({ length: 11 }, () => null)
+      );
+      this.mountainSet = new Set(
+         [
+            [2, 2],
+            [4, 9],
+            [6, 4],
+            [9, 10],
+            [10, 6],
+         ].map((pair) => pair.join())
+      );
    }
 
-   createGrid() {
-      const baseTile = new Tile('empty');
-      const image = baseTile.getTileImage();
-      image.onload = () => {
-         this.potatoMap.ctx.font = '40pt "Bree Serif"';
-         this.potatoMap.ctx.fillStyle = '#000';
-         this.potatoMap.ctx.fillText('Potato Map', this.locX, this.locY - 20, 200);
-         this.potatoMap.ctx.fillStyle = '#fff';
-         this.potatoMap.ctx.fillRect(
-            this.locX - 5,
-            this.locY - 5,
-            this.w + 10,
-            this.h + 10
-         );
-         let rows = 0;
-         while (rows < 11) {
-            for (let i = 0; i < 11; i++) {
-               const locX = this.locX + (this.tilesW * i + this.margin + this.margin * i);
-               const locY =
-                  this.locY + (this.tilesH * rows + this.margin + this.margin * rows);
-               if (this.isMountain(rows, i)) {
-                  this.tiles[rows][i] = this.drawMountain(locX, locY);
-               } else {
-                  this.potatoMap.ctx.drawImage(
-                     image,
-                     locX,
-                     locY,
-                     this.tilesW,
-                     this.tilesH
-                  );
-                  baseTile.locX = locX;
-                  baseTile.locY = locY;
-                  this.tiles[rows][i] = baseTile;
-               }
-            }
-            rows++;
-         }
-      };
+   drawGridBackground() {
+      this.potatoMap.ctx.font = '40pt "Bree Serif"';
+      this.potatoMap.ctx.fillStyle = '#000';
+      this.potatoMap.ctx.fillText('Potato Map', this.locX, this.locY - 20, 200);
+      this.potatoMap.ctx.fillStyle = '#fff';
+      this.potatoMap.ctx.strokeStyle = '#fff';
+      this.potatoMap.ctx.roundRect(
+         this.locX - 5,
+         this.locY - 5,
+         this.w + 10,
+         this.h + 10,
+         5
+      );
+      this.potatoMap.ctx.stroke();
+      this.potatoMap.ctx.fill();
    }
-   changeTile(x, y, tileName) {
+
+   async createGrid() {
+      const baseTile = new Tile('empty');
+      const image = await new Promise((resolve) => {
+         const img = baseTile.getTileImage();
+         img.onload = () => resolve(img);
+      });
+      this.drawGridBackground();
+      for (let row = 0; row < 11; row++) {
+         for (let col = 0; col < 11; col++) {
+            const locX = this.locX + (this.tilesW + this.margin) * col + this.margin;
+            const locY = this.locY + (this.tilesH + this.margin) * row + this.margin;
+            if (this.isMountain(row, col)) {
+               this.tiles[row][col] = await this.drawMountain(locX, locY);
+            } else {
+               this.potatoMap.ctx.drawImage(image, locX, locY, this.tilesW, this.tilesH);
+               this.tiles[row][col] = new Tile('empty', locX, locY);
+            }
+            this.trackCursor(locX, locY, row, col , this.tiles[row][col]);
+         }
+      }
+      this.update();
+   }
+
+   async changeTile(x, y, tileName) {
       const tile = new Tile(tileName);
-      tile.getTileImage().onload = () => {
-         this.tiles[x][y] = tile;
-      };
+      await new Promise((resolve) => {
+         const img = tile.getTileImage();
+         img.onload = () => resolve(img);
+      });
+      this.tiles[x][y] = new Tile(tileName, this.tiles[x][y].locX, this.tiles[x][y].locY);
       return tile;
    }
 
-   drawMountain(locX, locY) {
-      const mountainTile = new Tile('mountain');
-      const mountainImage = mountainTile.getTileImage();
-      mountainImage.onload = () => {
-         this.potatoMap.ctx.drawImage(
-            mountainImage,
-            locX,
-            locY,
-            this.tilesW,
-            this.tilesH
-         );
-      };
+   async drawMountain(locX, locY) {
+      const mountainTile = new Tile('mountain', locX, locY);
+      const mountainImage = await new Promise((resolve) => {
+         const img = mountainTile.getTileImage();
+         img.onload = () => resolve(img);
+      });
+      this.potatoMap.ctx.drawImage(mountainImage, locX, locY, this.tilesW, this.tilesH);
       return mountainTile;
    }
 
    isMountain(row, column) {
-      return JSON.stringify([
-         [2, 2],
-         [4, 9],
-         [6, 4],
-         [9, 10],
-         [10, 6],
-      ]).includes(JSON.stringify([row + 1, column + 1]));
+      return this.mountainSet.has([row + 1, column + 1].join());
+   }
+
+   trackCursor(locX, locY, row, col , tile) {
+      this.potatoMap.canvas.addEventListener('mousemove', (event) => {
+         const rect = this.potatoMap.canvas.getBoundingClientRect();
+         const x = event.clientX - rect.left;
+         const y = event.clientY - rect.top;
+
+         if (
+            x >= locX &&
+            x <= locX + this.tilesW &&
+            y >= locY &&
+            y <= locY + this.tilesH
+         ) {
+            console.log(`Mouse over tile at row ${row} and column ${col} the Tile is ${tile.tileName}`);
+         }
+      });
+   }
+
+   update() {
+      // console.log(this.tiles);
+      this.drawGridBackground()
+      for (let row = 0; row < 11; row++) {
+         for (let col = 0; col < 11; col++) {
+            const tile = this.tiles[row][col];
+            if (tile) {
+               const image = tile.getTileImage();
+               this.potatoMap.ctx.drawImage(
+                  image,
+                  tile.locX,
+                  tile.locY,
+                  this.tilesW,
+                  this.tilesH
+               );
+            }
+         }
+      }
+      requestAnimationFrame(this.update.bind(this));
    }
 }
