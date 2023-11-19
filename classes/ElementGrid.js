@@ -1,5 +1,6 @@
 import elements from '../data/elements.js';
 import Element from './Element.js';
+import Tile from './Tile.js';
 
 const DEFAULTS = {
    posX: 1050,
@@ -15,13 +16,22 @@ const DEFAULTS = {
 };
 
 export default class ElementGrid {
-   constructor(ctx) {
+   constructor(ctx, grid) {
       this.ctx = ctx;
+      this.grid = grid;
       Object.assign(this, DEFAULTS);
       this.currentElement = null;
       this.elements = elements.map(
          (elem) => new Element(elem.time, elem.type, elem.shape)
       );
+      this.tileImages = {};
+   }
+   async preloadTileImages() {
+      // Preload tile images and store them in the dictionary
+      for (const element of this.elements) {
+         const tile = new Tile(element.type);
+         this.tileImages[element.type] = await tile.getTileImage();
+      }
    }
 
    drawRoundedRectangle() {
@@ -122,23 +132,25 @@ export default class ElementGrid {
             posY,
             cellWidth,
             cellHeight,
-            cellMargin
+            cellMargin,
+            this.tileImages
          );
       }
    }
 
    createRandomElement() {
+      const { posX, posY, cellWidth, cellHeight, cellMargin } = this;
       const randomIndex = Math.floor(Math.random() * this.elements.length);
       this.currentElement = this.elements[randomIndex];
 
-      const { posX, posY, cellWidth, cellHeight, cellMargin } = this;
       this.currentElement.drawElement(
          this.ctx,
          posX,
          posY,
          cellWidth,
          cellHeight,
-         cellMargin
+         cellMargin,
+         this.tileImages
       );
    }
 
@@ -151,7 +163,8 @@ export default class ElementGrid {
    }
 
    updateCells() {
+      this.grid.currentElement = this.currentElement;
+      this.grid.elementGrid = this;
       this.updateElementGrid();
-      requestAnimationFrame(this.updateCells.bind(this));
    }
 }
