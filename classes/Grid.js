@@ -147,17 +147,17 @@ export default class Grid {
       const textHeight = 19;
       const totalHeight = Object.keys(this.seasons).length * textHeight;
       const backgroundY = this.locY - 160;
-      const bgX = 975
+      const bgX = 975;
 
       this.drawInfoBackground(
-         bgX  ,
+         bgX,
          backgroundY,
          300,
          totalHeight + 170,
          5,
          backgroundColor
       );
-      const infoX = bgX - 15
+      const infoX = bgX - 15;
 
       let yOffset = backgroundY + 2 * textHeight - 15;
 
@@ -188,7 +188,7 @@ export default class Grid {
          );
       }
 
-      yOffset += textHeight * 2; 
+      yOffset += textHeight * 2;
       this.drawText(
          `Current Time: ${this.consumedTimeUnits}`,
          this.locX + infoX,
@@ -206,7 +206,12 @@ export default class Grid {
       this.drawText(`Current Season Missions`, this.locX + infoX, yOffset, textColor);
       yOffset += textHeight * 2;
       this.currentMissions.forEach((mission) => {
-         this.drawText(mission.missionName, this.locX + infoX, yOffset, this.seasonColors[this.currentSeason]);
+         this.drawText(
+            mission.missionName,
+            this.locX + infoX,
+            yOffset,
+            this.seasonColors[this.currentSeason]
+         );
          yOffset += textHeight;
       });
    }
@@ -460,8 +465,8 @@ export default class Grid {
          });
       });
 
-      const totalPoints = points + sharedMissionsPoints;
-
+      const totalPoints =
+         this.currentSeason == 'winter' ? points : points + sharedMissionsPoints;
       return totalPoints;
    }
 
@@ -469,13 +474,12 @@ export default class Grid {
       for (const season in this.seasons) {
          if (Object.hasOwnProperty.call(this.seasons, season)) {
             const currentSeason = this.seasons[season];
+            if (this.currentTimeUnits < this.currentElement.time)
+               this.checkMissionsProgress();
             if (season == this.currentSeason) {
-               if (
-                  currentSeason.endTime < this.consumedTimeUnits ||
-                  this.currentElement.time > this.currentTimeUnits
-               ) {
-                  const seasonsNames = Object.keys(this.seasons);
+               if (currentSeason.endTime < this.consumedTimeUnits) {
                   this.checkMissionsProgress();
+                  const seasonsNames = Object.keys(this.seasons);
                   this.currentSeason = seasonsNames[seasonsNames.indexOf(season) + 1];
                }
             }

@@ -64,9 +64,9 @@ export default class PotatoMap {
       if (this.grid.checkForGameEnd()) {
          // Display game end information and reset button
          Storage.clearData('potatoMapData');
-         return;
+      } else {
+         Storage.saveData('potatoMapData', this.getState());
       }
-      Storage.saveData('potatoMapData', this.getState());
       await this.grid.updateTiles();
       this.grid.updateSeasonCycle();
       this.grid.initializeInfo();
