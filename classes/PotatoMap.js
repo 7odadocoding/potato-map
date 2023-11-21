@@ -1,6 +1,6 @@
 import Grid from './Grid.js';
 
-class Storage {
+export class Storage {
    static saveData(key, data) {
       localStorage.setItem(key, JSON.stringify(data));
    }
@@ -28,46 +28,8 @@ export default class PotatoMap {
       canvas.height = height;
    }
 
-   initializeGame() {
-      // Check if there's saved progress
-      const savedData = Storage.loadData('potatoMapData');
-      if (savedData) {
-         this.restoreSavedProgress(savedData);
-      } else {
-         this.initializeNewGame();
-      }
-
-      this.startGame();
-   }
-
-   initializeNewGame() {
-      // Initialize the game as usual
-      this.grid.missions = {
-         A: { points: 0, missionName: '' },
-         B: { points: 0, missionName: '' },
-         C: { points: 0, missionName: '' },
-         D: { points: 0, missionName: '' },
-      };
-
-      this.grid.basicMissions = missions.basic.map((Mission, i) => {
-         const mission = new Mission();
-         this.grid.missions[Object.keys(this.grid.missions)[i]].missionName =
-            mission.name;
-         return mission;
-      });
-
-      this.grid.currentSeason = 'spring';
-      this.grid.maxTimeUnits = 28;
-      this.grid.currentTimeUnits = this.grid.maxTimeUnits;
-      this.grid.consumedTimeUnits = 0;
-
-      this.grid.seasons = {
-         spring: { points: 0, endTime: 7, currentTime: 0, missions: ['A', 'B'] },
-         summer: { points: 0, endTime: 14, currentTime: 0, missions: ['B', 'C'] },
-         autumn: { points: 0, endTime: 21, currentTime: 0, missions: ['C', 'D'] },
-         winter: { points: 0, endTime: 28, currentTime: 0, missions: ['D', 'A'] },
-      };
-
+   async initializeNewGame() {
+      await this.grid.createGrid();
       this.initializeGrid();
       this.initializeMissions();
 
@@ -75,40 +37,33 @@ export default class PotatoMap {
       Storage.saveData('potatoMapData', this.getState());
    }
 
-   restoreSavedProgress(savedData) {
+   async restoreSavedProgress(savedData) {
       // Restore the game state from the saved data
       this.grid.missions = savedData.missions;
-      this.grid.basicMissions = savedData.basicMissions;
       this.grid.currentSeason = savedData.currentSeason;
       this.grid.maxTimeUnits = savedData.maxTimeUnits;
       this.grid.currentTimeUnits = savedData.currentTimeUnits;
       this.grid.consumedTimeUnits = savedData.consumedTimeUnits;
       this.grid.seasons = savedData.seasons;
+      this.grid.tiles = savedData.tiles;
 
-      // Optionally, update any additional properties based on the saved data
-      // ...
+      await this.grid.createGrid();
 
-      // Update the grid, missions, or other components based on the saved data
-      // ...
-
-      // You might want to update the UI or perform additional actions
-      // ...
-
-      // Save the restored state back to localStorage (optional)
       Storage.saveData('potatoMapData', this.getState());
    }
 
    initializeGrid() {
-      this.createGrid();
+      this.grid.createGrid();
    }
 
    initializeMissions() {
-      this.initializeInfo();
+      this.grid.initializeInfo();
    }
 
    async startGame() {
       if (this.grid.checkForGameEnd()) {
          // Display game end information and reset button
+         Storage.clearData('potatoMapData');
          return;
       }
       Storage.saveData('potatoMapData', this.getState());
@@ -137,13 +92,12 @@ export default class PotatoMap {
       // Return the current state of the game that needs to be saved
       return {
          missions: this.grid.missions,
-         basicMissions: this.grid.basicMissions,
          currentSeason: this.grid.currentSeason,
          maxTimeUnits: this.grid.maxTimeUnits,
          currentTimeUnits: this.grid.currentTimeUnits,
          consumedTimeUnits: this.grid.consumedTimeUnits,
          seasons: this.grid.seasons,
-         // ... other properties
+         tiles: this.grid.tiles,
       };
    }
 }

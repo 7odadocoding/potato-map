@@ -53,6 +53,15 @@ export default class Grid {
          autumn: { points: 0, endTime: 21, currentTime: 0, missions: ['C', 'D'] },
          winter: { points: 0, endTime: 28, currentTime: 0, missions: ['D', 'A'] },
       };
+      this.currentMissions = this.seasons[this.currentSeason].missions.map((key) => {
+         return this.missions[key];
+      });
+      this.seasonColors = {
+         spring: '#508D69',
+         summer: '#C51605',
+         autumn: '#EC8F5E',
+         winter: '#0766AD',
+      };
    }
 
    async initializeInfo() {
@@ -73,6 +82,9 @@ export default class Grid {
    async drawMissionImages() {
       await this.loadMissionImages();
       let offsetY = 0;
+      this.currentMissions = this.seasons[this.currentSeason].missions.map((key) => {
+         return this.missions[key];
+      });
 
       for (let i = 0; i < this.missionImages.length; i++) {
          const missionImage = this.missionImages[i];
@@ -83,7 +95,7 @@ export default class Grid {
 
          const targetImageSize = 300;
          const padding = 10;
-         const startY = this.locY + 70;
+         const startY = this.locY + 100;
 
          let col = i % 2;
          let row = Math.floor(i / 2);
@@ -132,27 +144,34 @@ export default class Grid {
    drawInfo() {
       const backgroundColor = '#fff';
       const textColor = '#000';
-      const textHeight = 17;
+      const textHeight = 19;
       const totalHeight = Object.keys(this.seasons).length * textHeight;
-      const backgroundY = this.locY - 120;
+      const backgroundY = this.locY - 160;
+      const bgX = 975
 
       this.drawInfoBackground(
-         900,
+         bgX  ,
          backgroundY,
-         340,
-         totalHeight + 100,
+         300,
+         totalHeight + 170,
          5,
          backgroundColor
       );
+      const infoX = bgX - 15
 
-      let yOffset = backgroundY + 2 * textHeight;
+      let yOffset = backgroundY + 2 * textHeight - 15;
 
       for (const [season, info] of Object.entries(this.seasons)) {
          if (this.seasons[season]) {
             const seasonInfo = `${
                season.charAt(0).toUpperCase() + season.slice(1)
             }: Points - ${info.points || 0}`;
-            this.drawText(seasonInfo, this.locX + 900, yOffset, textColor);
+            this.drawText(
+               seasonInfo,
+               this.locX + infoX,
+               yOffset,
+               this.seasonColors[season]
+            );
             yOffset += textHeight;
          }
       }
@@ -163,26 +182,33 @@ export default class Grid {
             `Current Season: ${this.currentSeason}, Points - ${
                currentSeasonInfo.points || 0
             }`,
-            this.locX + 900,
-            yOffset,
-            textColor
+            this.locX + infoX,
+            yOffset + 10,
+            this.seasonColors[this.currentSeason]
          );
       }
 
-      yOffset += textHeight;
+      yOffset += textHeight * 2; 
       this.drawText(
          `Current Time: ${this.consumedTimeUnits}`,
-         this.locX + 900,
+         this.locX + infoX,
          yOffset,
          textColor
       );
       yOffset += textHeight;
       this.drawText(
          `Time Units: ${this.currentTimeUnits}`,
-         this.locX + 900,
+         this.locX + infoX,
          yOffset,
          textColor
       );
+      yOffset += textHeight;
+      this.drawText(`Current Season Missions`, this.locX + infoX, yOffset, textColor);
+      yOffset += textHeight * 2;
+      this.currentMissions.forEach((mission) => {
+         this.drawText(mission.missionName, this.locX + infoX, yOffset, this.seasonColors[this.currentSeason]);
+         yOffset += textHeight;
+      });
    }
 
    drawInfoBackground(x, y, width, height, cornerRadius, color) {
@@ -234,7 +260,8 @@ export default class Grid {
                   this.tilesW,
                   this.tilesH
                );
-               this.tiles[row][col] = new Tile('empty', tileX, tileY);
+               if (!this.tiles[row][col])
+                  this.tiles[row][col] = new Tile('empty', tileX, tileY);
             }
             this.trackCursor(tileX, tileY, row, col);
          }
@@ -581,7 +608,6 @@ export default class Grid {
 
    async updateTiles() {
       this.potatoMap.ctx.globalCompositeOperation = 'source-over';
-
       for (let row = 0; row < GRID_SIZE; row++) {
          for (let col = 0; col < GRID_SIZE; col++) {
             const tile = this.tiles[row][col];
