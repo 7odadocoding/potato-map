@@ -76,7 +76,8 @@ export default class Grid {
 
       for (let i = 0; i < this.missionImages.length; i++) {
          const missionImage = this.missionImages[i];
-         const mission = missions.basic[i];
+         const mission = new missions.basic[i]();
+         const missionName = mission.name;
 
          const aspectRatio = missionImage.width / missionImage.height;
 
@@ -111,7 +112,11 @@ export default class Grid {
             imageHeight
          );
 
-         const missionProgress = this.missions[new mission().name] || 0;
+         const missionProgress =
+            Object.values(this.missions).filter((val) => {
+               return val.missionName == missionName;
+            })[0].points || 0;
+
          const progressText = `Progress: ${missionProgress}`;
          const textColor = 'white';
 
