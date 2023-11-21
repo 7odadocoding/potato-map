@@ -14,9 +14,20 @@ async function gameLoop() {
    await elementGrid.preloadTileImages(); // Preload tile images
    grid.createGrid();
    elementGrid.drawElementGrid();
+   grid.drawInfo();
 
    async function update() {
+      // if (!isWindowFocused) {
+      //    return;
+      // }
       await grid.updateTiles();
+      grid.checkMissionsProgress();
+      await grid.initializeInfo();
+      
+      grid.updateSeasonCycle();
+      grid.checkForGameEnd();
+      elementGrid.updateCells();
+      elementGrid.drawRoundedRectangle();
       elementGrid.updateCells();
       requestAnimationFrame(update);
    }

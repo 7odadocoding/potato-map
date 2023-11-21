@@ -1,18 +1,21 @@
+import { missions } from './Mission.js';
 import Tile from './Tile.js';
+import { GRID_SIZE, MARGIN } from '../data/constants.js';
 
 export default class Grid {
    constructor(potatoMap, tilesW, tilesH, locX, locY) {
       this.potatoMap = potatoMap;
       this.locX = locX;
       this.locY = locY;
-      this.margin = 3;
+      this.margin = MARGIN;
       this.tilesW = tilesW;
       this.tilesH = tilesH;
-      this.w = tilesW * 11 + this.margin * 12;
-      this.h = tilesH * 11 + this.margin * 12;
-      this.tiles = Array.from({ length: 11 }, () =>
-         Array.from({ length: 11 }, () => null)
+      this.w = tilesW * GRID_SIZE + this.margin * (GRID_SIZE + 1);
+      this.h = tilesH * GRID_SIZE + this.margin * (GRID_SIZE + 1);
+      this.tiles = Array.from({ length: GRID_SIZE }, () =>
+         Array.from({ length: GRID_SIZE }, () => null)
       );
+
       this.mountainSet = new Set(
          [
             [2, 2],
@@ -29,10 +32,161 @@ export default class Grid {
       this.currentElement = null;
       this.elementGrid = null;
       this.addClickEventListener();
+      this.basicMissions = missions.basic.map((Mission) => new Mission());
+      this.missionsPoints = {};
+      this.currentSeason = 'spring';
+      this.maxTimeUnits = 28;
+      this.currentTimeUnits = this.maxTimeUnits;
+      this.consumedTimeUnits = 0;
+      this.seasons = {
+         spring: { points: 0, endTime: 7, currentTime: 0 },
+         summer: { points: 0, endTime: 14, currentTime: 0 },
+         autumn: { points: 0, endTime: 21, currentTime: 0 },
+         winter: { points: 0, endTime: 28, currentTime: 0 },
+      };
+   }
+
+   async initializeInfo() {
+      await this.loadMissionImages();
+      this.drawMissionImages();
+      this.drawInfo();
+   }
+
+   async loadMissionImages() {
+      if (!this.missionImages) {
+         const missionImagesPromises = this.basicMissions.map(
+            async (mission) => await mission.getImage()
+         );
+         this.missionImages = await Promise.all(missionImagesPromises);
+      }
+   }
+
+   async drawMissionImages() {
+      await this.loadMissionImages();
+      let offsetY = 0;
+
+      for (let i = 0; i < this.missionImages.length; i++) {
+         const missionImage = this.missionImages[i];
+         const mission = missions.basic[i];
+
+         const aspectRatio = missionImage.width / missionImage.height;
+
+         const targetImageSize = 300;
+         const padding = 10;
+         const startY = this.locY + 70;
+
+         let col = i % 2; // Column index (0 or 1)
+         let row = Math.floor(i / 2); // Row index (0 or 1)
+
+         let rowWidth = targetImageSize * 2 + padding; // Combined width of two missions
+         let currentX =
+            this.potatoMap.ctx.canvas.width / 2 -
+            rowWidth / 2 +
+            col * (targetImageSize + padding) +
+            300;
+
+         let imageWidth, imageHeight;
+         if (aspectRatio >= 1) {
+            imageWidth = targetImageSize;
+            imageHeight = targetImageSize / aspectRatio;
+         } else {
+            imageWidth = targetImageSize * aspectRatio;
+            imageHeight = targetImageSize;
+         }
+
+         // Draw mission image on the white background
+         this.potatoMap.ctx.drawImage(
+            missionImage,
+            currentX,
+            startY + offsetY + row * (imageHeight + padding),
+            imageWidth,
+            imageHeight
+         );
+
+         const missionProgress = this.missionsPoints[new mission().name] || 0;
+         const progressText = `Progress: ${missionProgress}`;
+         const textColor = 'white'; // White color for progress text
+
+         const textWidth = this.potatoMap.ctx.measureText(progressText).width;
+         const textX = currentX + imageWidth - textWidth - padding;
+         const textY =
+            startY + offsetY + row * (imageHeight + padding) + imageHeight - padding;
+
+         // Draw progress text in the right-bottom corner on the white background
+         this.drawText(progressText, textX, textY, textColor);
+      }
+   }
+
+   async drawInfo() {
+      const backgroundColor = '#fff'; // White background color
+      const textColor = '#000'; // Black text color
+      const textHeight = 17; // Adjust the text height as needed
+
+      // Calculate the total height needed for the text
+      const totalHeight = Object.keys(this.seasons).length * textHeight;
+
+      // Draw background for seasons and time info
+      const backgroundY = this.locY - 120; // Adjust the vertical position
+      this.drawInfoBackground(
+         900,
+         backgroundY,
+         340,
+         totalHeight + 100,
+         5,
+         backgroundColor
+      );
+
+      // Draw text on top of the background
+      let yOffset = backgroundY + 2 * textHeight; // Initial vertical position with extra space
+
+      // Draw season information
+      for (const [season, info] of Object.entries(this.seasons)) {
+         const seasonInfo = `${
+            season.charAt(0).toUpperCase() + season.slice(1)
+         }: Points - ${info.points}`;
+         this.drawText(seasonInfo, this.locX + 900, yOffset, textColor);
+         yOffset += textHeight; // Adjust the vertical spacing as needed
+      }
+
+      // Draw current season and time information
+      this.drawText(
+         `Current Season: ${this.currentSeason}, Points - ${
+            this.seasons[this.currentSeason].points
+         }`,
+         this.locX + 900,
+         yOffset,
+         textColor
+      );
+      yOffset += textHeight; // Add extra space
+      this.drawText(
+         `Current Time: ${this.consumedTimeUnits}`,
+         this.locX + 900,
+         yOffset,
+         textColor
+      );
+      yOffset += textHeight; // Adjust the vertical spacing as needed
+      this.drawText(
+         `Time Units: ${this.currentTimeUnits}`,
+         this.locX + 900,
+         yOffset,
+         textColor
+      );
+   }
+   drawInfoBackground(x, y, width, height, cornerRadius, color) {
+      this.potatoMap.ctx.font = '10pt "Bree Serif"';
+      this.potatoMap.ctx.fillStyle = color;
+      this.potatoMap.ctx.beginPath();
+      this.potatoMap.ctx.roundRect(x, y, width, height, cornerRadius);
+      this.potatoMap.ctx.fill();
+   }
+
+   drawText(text, x, y, textColor) {
+      this.potatoMap.ctx.font = '12pt "Bree Serif"';
+      this.potatoMap.ctx.fillStyle = textColor; // Black text color
+      this.potatoMap.ctx.fillText(text, x, y);
    }
 
    drawGridBackground() {
-      // this.potatoMap.ctx.globalCompositeOperation = 'source-over';
       this.potatoMap.ctx.font = '40pt "Bree Serif"';
       this.potatoMap.ctx.fillStyle = '#000';
       this.potatoMap.ctx.fillText('Potato Map', this.locX, this.locY - 20, 200);
@@ -53,43 +207,50 @@ export default class Grid {
       const baseTile = new Tile('empty');
       const image = await baseTile.getTileImage();
       this.drawGridBackground();
-      for (let row = 0; row < 11; row++) {
-         for (let col = 0; col < 11; col++) {
-            const locX = this.locX + (this.tilesW + this.margin) * col + this.margin;
-            const locY = this.locY + (this.tilesH + this.margin) * row + this.margin;
+      for (let row = 0; row < GRID_SIZE; row++) {
+         for (let col = 0; col < GRID_SIZE; col++) {
+            const tileX = this.locX + (this.tilesW + this.margin) * col + this.margin;
+            const tileY = this.locY + (this.tilesH + this.margin) * row + this.margin;
             if (this.isMountain(row, col)) {
-               this.tiles[row][col] = await this.drawMountain(locX, locY);
+               this.tiles[row][col] = await this.drawMountain(tileX, tileY);
             } else {
-               this.potatoMap.ctx.drawImage(image, locX, locY, this.tilesW, this.tilesH);
-               this.tiles[row][col] = new Tile('empty', locX, locY);
+               this.potatoMap.ctx.drawImage(
+                  image,
+                  tileX,
+                  tileY,
+                  this.tilesW,
+                  this.tilesH
+               );
+               this.tiles[row][col] = new Tile('empty', tileX, tileY);
             }
-            this.trackCursor(locX, locY, row, col);
+            this.trackCursor(tileX, tileY, row, col);
          }
       }
-      // this.update();
    }
 
    async changeTile(x, y) {
-      if (this.tiles[x][y]) {
-         let name = this.tiles[x][y].tileName;
-         this.tiles[x][y] = new Tile(name, this.tiles[x][y].locX, this.tiles[x][y].locY);
-         // console.log(this.tiles[x][y]);
-         let image = await this.tiles[x][y].getTileImage();
-         this.potatoMap.ctx.drawImage(
-            image,
+      const tile = this.tiles[x][y];
+      if (tile) {
+         const name = tile.tileName;
+         this.tiles[x][y] = new Tile(name, tile.locX, tile.locY);
+         await this.drawTile(
+            this.tiles[x][y],
             this.tiles[x][y].locX,
-            this.tiles[x][y].locY,
-            this.tilesW,
-            this.tilesH
+            this.tiles[x][y].locY
          );
-         return this.tiles[x][y];
       }
    }
 
-   async drawMountain(locX, locY) {
-      const mountainTile = new Tile('mountain', locX, locY);
+   async drawTile(tile, tileX, tileY) {
+      const image = await tile.getTileImage();
+      this.potatoMap.ctx.drawImage(image, tileX, tileY, this.tilesW, this.tilesH);
+      tile.isChanged = true; // Set the flag to true indicating the tile has changed
+   }
+
+   async drawMountain(tileX, tileY) {
+      const mountainTile = new Tile('mountain', tileX, tileY);
       const mountainImage = await mountainTile.getTileImage();
-      this.potatoMap.ctx.drawImage(mountainImage, locX, locY, this.tilesW, this.tilesH);
+      this.potatoMap.ctx.drawImage(mountainImage, tileX, tileY, this.tilesW, this.tilesH);
       return mountainTile;
    }
 
@@ -97,17 +258,17 @@ export default class Grid {
       return this.mountainSet.has([row + 1, column + 1].join());
    }
 
-   trackCursor(locX, locY, row, col) {
+   trackCursor(tileX, tileY, row, col) {
       this.potatoMap.canvas.addEventListener('mousemove', (event) => {
          const rect = this.potatoMap.canvas.getBoundingClientRect();
          const x = event.clientX - rect.left;
          const y = event.clientY - rect.top;
-         // console.log(x, y, this.w, this.h);
+
          if (
-            x >= locX &&
-            x <= locX + this.tilesW &&
-            y >= locY &&
-            y <= locY + this.tilesH &&
+            x >= tileX &&
+            x <= tileX + this.tilesW &&
+            y >= tileY &&
+            y <= tileY + this.tilesH &&
             this.currentElement
          ) {
             this.selectedTile = { row, col };
@@ -123,8 +284,6 @@ export default class Grid {
             this.selectedTile = { row: null, col: null };
             this.clearIndicator();
          }
-         // if (this.selectedTile.row && this.selectedTile.col)
-         //    console.log(this.tiles[this.selectedTile.row][this.selectedTile.col]);
       });
    }
 
@@ -134,14 +293,12 @@ export default class Grid {
             event.clientX - this.potatoMap.canvas.getBoundingClientRect().left;
          const mouseY = event.clientY - this.potatoMap.canvas.getBoundingClientRect().top;
 
-         // Check if the click is within the grid area
          if (
             mouseX >= this.locX &&
             mouseX <= this.locX + this.w &&
             mouseY >= this.locY &&
             mouseY <= this.locY + this.h
          ) {
-            // Calculate the selected tile based on the click position
             const selectedCol = Math.floor(
                (mouseX - this.locX) / (this.tilesW + this.margin)
             );
@@ -151,7 +308,6 @@ export default class Grid {
 
             this.selectedTile = { row: selectedRow, col: selectedCol };
 
-            // Place the this.currentElement on the selected tile
             if (this.currentElement && this.elementGrid) {
                this.placeElement();
             }
@@ -161,21 +317,26 @@ export default class Grid {
 
    placeElement() {
       if (this.checkIsElementPlacable()) {
+         if (!this.calculateTimeDecrement()) return;
+         this.consumedTimeUnits += this.currentElement.time;
+
          this.elementGrid.createRandomElement();
          const { currentElement, selectedTile } = this;
          const gridSize = currentElement.shape.length;
 
-         // Calculate the starting position for the element placement
-         const locX =
-            this.locX + (this.tilesW + this.margin) * selectedTile.col + this.margin;
-         const locY =
-            this.locY + (this.tilesH + this.margin) * selectedTile.row + this.margin;
+         const tileX =
+            this.locX +
+            (this.tilesW + this.margin) * (selectedTile.col - 1) +
+            this.margin;
+         const tileY =
+            this.locY +
+            (this.tilesH + this.margin) * (selectedTile.row - 1) +
+            this.margin;
 
-         // Iterate over the element shape and update the corresponding tiles in Grid.tiles
          for (let row = 0; row < gridSize; row++) {
             for (let col = 0; col < gridSize; col++) {
-               const gridRow = selectedTile.row + row;
-               const gridCol = selectedTile.col + col;
+               const gridRow = selectedTile.row - 1 + row;
+               const gridCol = selectedTile.col - 1 + col;
 
                if (
                   gridRow >= 0 &&
@@ -183,12 +344,11 @@ export default class Grid {
                   gridCol >= 0 &&
                   gridCol < this.tiles[gridRow].length
                ) {
-                  // Check if the cell in the element shape is 1
                   if (currentElement.shape[row][col] === 1) {
                      const tile = new Tile(
                         currentElement.type,
-                        locX + col * (this.tilesW + this.margin),
-                        locY + row * (this.tilesH + this.margin)
+                        tileX + col * (this.tilesW + this.margin),
+                        tileY + row * (this.tilesH + this.margin)
                      );
                      this.tiles[gridRow][gridCol] = tile;
                   }
@@ -198,19 +358,96 @@ export default class Grid {
       }
    }
 
-   checkIsElementPlacable() {
-      const { currentElement, tiles, selectedTile } = this;
+   calculateTimeDecrement() {
+      if (this.currentElement) {
+         if (this.currentTimeUnits < this.currentElement.time) {
+            return false;
+         }
+         const timeRequirement = this.currentElement.time;
+         this.currentTimeUnits -= timeRequirement;
 
-      // Get 3x3 array from tiles starting from the selectedTile
-      const gridSize = 3; // You can adjust this based on your requirements
+         if (this.currentTimeUnits < 0) {
+            this.currentTimeUnits = 0;
+         }
+         return true;
+      }
+   }
+
+   checkMissionsProgress() {
+      let totalPoints = 0;
+      if (this.tiles[GRID_SIZE - 1][GRID_SIZE - 1]) {
+         this.basicMissions.forEach((mission) => {
+            const progress = mission.checkProgress(this.tiles);
+            totalPoints += progress;
+            this.missionsPoints[mission.name] = progress;
+         });
+         this.seasons[this.currentSeason].points = this.calculateSeasonPoints(
+            this.currentSeason,
+            totalPoints
+         );
+
+         // console.log('Missions Progress:', this.missionsPoints);
+      }
+   }
+   checkForGameEnd() {
+      if (this.currentElement.time > this.currentTimeUnits) return true;
+
+      for (let row = 0; row < GRID_SIZE; row++) {
+         for (let col = 0; col < GRID_SIZE; col++) {
+            if (this.checkIsElementPlacable({ row, col })) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   calculateSeasonPoints(season, points) {
+      switch (season) {
+         case 'spring':
+            return points;
+         case 'summer':
+            return points - this.seasons.spring.points;
+         case 'autumn':
+            return points - (this.seasons.spring.points + this.seasons.summer.points);
+         case 'winter':
+            return (
+               points -
+               (this.seasons.spring.points +
+                  this.seasons.summer.points +
+                  this.seasons.autumn.points)
+            );
+         default:
+            break;
+      }
+   }
+
+   updateSeasonCycle() {
+      for (const season in this.seasons) {
+         if (Object.hasOwnProperty.call(this.seasons, season)) {
+            const currentSeason = this.seasons[season];
+            if (season == this.currentSeason) {
+               if (currentSeason.endTime < this.consumedTimeUnits) {
+                  const seasonsNames = Object.keys(this.seasons);
+                  this.currentSeason = seasonsNames[seasonsNames.indexOf(season) + 1];
+               }
+            }
+         }
+      }
+   }
+
+   checkIsElementPlacable(tile) {
+      const { currentElement, tiles, currentTimeUnits } = this;
+      const selectedTile = tile || this.selectedTile;
+      const gridSize = 3;
       const gridArray = [];
+      if (currentElement.time > currentTimeUnits) return false;
       for (let i = 0; i < gridSize; i++) {
          const rowArray = [];
          for (let j = 0; j < gridSize; j++) {
-            const rowIndex = selectedTile.row + i;
-            const colIndex = selectedTile.col + j;
+            const rowIndex = selectedTile.row - 1 + i;
+            const colIndex = selectedTile.col - 1 + j;
 
-            // Check if the indices are within the valid range
             if (
                rowIndex >= 0 &&
                rowIndex < tiles.length &&
@@ -219,31 +456,26 @@ export default class Grid {
             ) {
                rowArray.push(tiles[rowIndex][colIndex]);
             } else {
-               // Handle the case where the indices are out of bounds
-               rowArray.push(null); // You might want to adjust this based on your requirements
+               rowArray.push(null);
             }
          }
          gridArray.push(rowArray);
       }
 
-      // Loop through the grid and check for collision
       for (let row = 0; row < gridSize; row++) {
          for (let col = 0; col < gridSize; col++) {
             const cellValue = currentElement.shape[row][col];
             const tile = gridArray[row][col];
 
             if (cellValue === 1 && (tile === null || tile.tileName !== 'empty')) {
-               // Collision detected, element cannot be placed on non-empty tiles
                return false;
             }
          }
       }
-      // No collision detected, element can be placed
       return true;
    }
 
    drawPlacementIndicator() {
-      // Check if the selected tile is within the grid
       this.clearIndicator();
       if (
          this.selectedTile.row !== null &&
@@ -256,59 +488,71 @@ export default class Grid {
          const { currentElement } = this;
          const gridSize = currentElement.shape.length;
 
-         // Calculate the starting position for the indicator
-         const locX =
-            this.locX + (this.tilesW + this.margin) * this.selectedTile.col + this.margin;
-         const locY =
-            this.locY + (this.tilesH + this.margin) * this.selectedTile.row + this.margin;
+         const tileX =
+            this.locX +
+            (this.tilesW + this.margin) * (this.selectedTile.col - 1) +
+            this.margin;
+         const tileY =
+            this.locY +
+            (this.tilesH + this.margin) * (this.selectedTile.row - 1) +
+            this.margin;
 
-         // Draw outline or highlight for the area where the element will be placed
-         this.potatoMap.ctx.beginPath();
-         this.potatoMap.ctx.lineWidth = 2;
-         this.potatoMap.ctx.strokeStyle = this.checkIsElementPlacable() ? 'green' : 'red';
-
-         // Iterate over the element shape and highlight cells with value == 1
          for (let row = 0; row < gridSize; row++) {
             for (let col = 0; col < gridSize; col++) {
-               if (currentElement.shape[row][col] === 1) {
-                  const cellX = locX + col * (this.tilesW + this.margin);
-                  const cellY = locY + row * (this.tilesH + this.margin);
-                  const cellWidth = this.tilesW;
-                  const cellHeight = this.tilesH;
+               const cellX = tileX + col * (this.tilesW + this.margin);
+               const cellY = tileY + row * (this.tilesH + this.margin);
+               const cellWidth = this.tilesW;
+               const cellHeight = this.tilesH;
 
-                  // Check if the cell is within the bounds of the grid
-                  if (
-                     cellX >= this.locX &&
-                     cellX + cellWidth <= this.locX + this.w &&
-                     cellY >= this.locY &&
-                     cellY + cellHeight <= this.locY + this.h
-                  ) {
-                     this.potatoMap.ctx.rect(cellX, cellY, cellWidth, cellHeight);
+               if (
+                  cellX >= this.locX &&
+                  cellX + cellWidth <= this.locX + this.w &&
+                  cellY >= this.locY &&
+                  cellY + cellHeight <= this.locY + this.h
+               ) {
+                  if (currentElement.shape[row][col] === 1) {
+                     this.potatoMap.ctx.beginPath();
+                     this.potatoMap.ctx.lineWidth = 2;
+                     const strokeStyle = this.checkIsElementPlacable()
+                        ? 'green'
+                        : currentElement.time > this.currentTimeUnits
+                        ? 'gray'
+                        : 'red';
+                     this.potatoMap.ctx.strokeStyle = strokeStyle;
+                     this.potatoMap.ctx.rect(
+                        cellX - 1,
+                        cellY - 1,
+                        cellWidth + 1,
+                        cellHeight + 1
+                     );
+                     this.potatoMap.ctx.stroke();
                   }
                }
             }
          }
-
-         this.potatoMap.ctx.stroke();
       }
    }
+
    clearIndicator() {
-      // Reset the stroke style to white
       this.potatoMap.ctx.strokeStyle = 'white';
 
-      for (let row = 0; row < 11; row++) {
-         for (let col = 0; col < 11; col++) {
+      for (let row = 0; row < GRID_SIZE; row++) {
+         for (let col = 0; col < GRID_SIZE; col++) {
             const tile = this.tiles[row][col];
             if (tile) {
-               const locX = tile.locX;
-               const locY = tile.locY;
+               const tileX = tile.locX;
+               const tileY = tile.locY;
                const cellWidth = this.tilesW;
                const cellHeight = this.tilesH;
 
-               // Draw a white rectangle to remove the old placement indicator
                this.potatoMap.ctx.beginPath();
-               this.potatoMap.ctx.lineWidth = 1;
-               this.potatoMap.ctx.rect(locX, locY, cellWidth, cellHeight);
+               this.potatoMap.ctx.lineWidth = 2;
+               this.potatoMap.ctx.rect(
+                  tileX - 1,
+                  tileY - 1,
+                  cellWidth + 1,
+                  cellHeight + 1
+               );
                this.potatoMap.ctx.stroke();
             }
          }
@@ -318,11 +562,15 @@ export default class Grid {
    async updateTiles() {
       this.potatoMap.ctx.globalCompositeOperation = 'source-over';
 
-      for (let row = 0; row < 11; row++) {
-         for (let col = 0; col < 11; col++) {
+      for (let row = 0; row < GRID_SIZE; row++) {
+         for (let col = 0; col < GRID_SIZE; col++) {
             const tile = this.tiles[row][col];
-            if (tile) {
+
+            // Check if the tile is null or has not changed
+            if (tile && tile.isChanged) {
+               // If the tile has changed, update it
                await this.changeTile(col, row);
+               tile.isChanged = false; // Reset the flag
             }
          }
       }

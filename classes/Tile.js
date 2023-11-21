@@ -6,6 +6,7 @@ export default class Tile {
       this.imageSrc = `${this.tilesPath}${this.tileName}.png`;
       this.locX = locX;
       this.locY = locY;
+      this.isChanged = true;
    }
 
    async getTileImage() {
