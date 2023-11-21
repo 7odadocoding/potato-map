@@ -32,17 +32,26 @@ export default class Grid {
       this.currentElement = null;
       this.elementGrid = null;
       this.addClickEventListener();
-      this.basicMissions = missions.basic.map((Mission) => new Mission());
-      this.missionsPoints = {};
+      this.missions = {
+         A: { points: 0, missionName: '' },
+         B: { points: 0, missionName: '' },
+         C: { points: 0, missionName: '' },
+         D: { points: 0, missionName: '' },
+      };
+      this.basicMissions = missions.basic.map((Mission, i) => {
+         const mission = new Mission();
+         this.missions[Object.keys(this.missions)[i]].missionName = mission.name;
+         return mission;
+      });
       this.currentSeason = 'spring';
       this.maxTimeUnits = 28;
       this.currentTimeUnits = this.maxTimeUnits;
       this.consumedTimeUnits = 0;
       this.seasons = {
-         spring: { points: 0, endTime: 7, currentTime: 0 },
-         summer: { points: 0, endTime: 14, currentTime: 0 },
-         autumn: { points: 0, endTime: 21, currentTime: 0 },
-         winter: { points: 0, endTime: 28, currentTime: 0 },
+         spring: { points: 0, endTime: 7, currentTime: 0, missions: ['A', 'B'] },
+         summer: { points: 0, endTime: 14, currentTime: 0, missions: ['B', 'C'] },
+         autumn: { points: 0, endTime: 21, currentTime: 0, missions: ['C', 'D'] },
+         winter: { points: 0, endTime: 28, currentTime: 0, missions: ['D', 'A'] },
       };
    }
 
@@ -75,10 +84,10 @@ export default class Grid {
          const padding = 10;
          const startY = this.locY + 70;
 
-         let col = i % 2; // Column index (0 or 1)
-         let row = Math.floor(i / 2); // Row index (0 or 1)
+         let col = i % 2;
+         let row = Math.floor(i / 2);
 
-         let rowWidth = targetImageSize * 2 + padding; // Combined width of two missions
+         let rowWidth = targetImageSize * 2 + padding;
          let currentX =
             this.potatoMap.ctx.canvas.width / 2 -
             rowWidth / 2 +
@@ -94,7 +103,6 @@ export default class Grid {
             imageHeight = targetImageSize;
          }
 
-         // Draw mission image on the white background
          this.potatoMap.ctx.drawImage(
             missionImage,
             currentX,
@@ -103,30 +111,26 @@ export default class Grid {
             imageHeight
          );
 
-         const missionProgress = this.missionsPoints[new mission().name] || 0;
+         const missionProgress = this.missions[new mission().name] || 0;
          const progressText = `Progress: ${missionProgress}`;
-         const textColor = 'white'; // White color for progress text
+         const textColor = 'white';
 
          const textWidth = this.potatoMap.ctx.measureText(progressText).width;
          const textX = currentX + imageWidth - textWidth - padding;
          const textY =
             startY + offsetY + row * (imageHeight + padding) + imageHeight - padding;
 
-         // Draw progress text in the right-bottom corner on the white background
          this.drawText(progressText, textX, textY, textColor);
       }
    }
 
-   async drawInfo() {
-      const backgroundColor = '#fff'; // White background color
-      const textColor = '#000'; // Black text color
-      const textHeight = 17; // Adjust the text height as needed
-
-      // Calculate the total height needed for the text
+   drawInfo() {
+      const backgroundColor = '#fff';
+      const textColor = '#000';
+      const textHeight = 17;
       const totalHeight = Object.keys(this.seasons).length * textHeight;
+      const backgroundY = this.locY - 120;
 
-      // Draw background for seasons and time info
-      const backgroundY = this.locY - 120; // Adjust the vertical position
       this.drawInfoBackground(
          900,
          backgroundY,
@@ -136,35 +140,38 @@ export default class Grid {
          backgroundColor
       );
 
-      // Draw text on top of the background
-      let yOffset = backgroundY + 2 * textHeight; // Initial vertical position with extra space
+      let yOffset = backgroundY + 2 * textHeight;
 
-      // Draw season information
       for (const [season, info] of Object.entries(this.seasons)) {
-         const seasonInfo = `${
-            season.charAt(0).toUpperCase() + season.slice(1)
-         }: Points - ${info.points}`;
-         this.drawText(seasonInfo, this.locX + 900, yOffset, textColor);
-         yOffset += textHeight; // Adjust the vertical spacing as needed
+         if (this.seasons[season]) {
+            const seasonInfo = `${
+               season.charAt(0).toUpperCase() + season.slice(1)
+            }: Points - ${info.points || 0}`;
+            this.drawText(seasonInfo, this.locX + 900, yOffset, textColor);
+            yOffset += textHeight;
+         }
       }
 
-      // Draw current season and time information
-      this.drawText(
-         `Current Season: ${this.currentSeason}, Points - ${
-            this.seasons[this.currentSeason].points
-         }`,
-         this.locX + 900,
-         yOffset,
-         textColor
-      );
-      yOffset += textHeight; // Add extra space
+      const currentSeasonInfo = this.seasons[this.currentSeason];
+      if (currentSeasonInfo) {
+         this.drawText(
+            `Current Season: ${this.currentSeason}, Points - ${
+               currentSeasonInfo.points || 0
+            }`,
+            this.locX + 900,
+            yOffset,
+            textColor
+         );
+      }
+
+      yOffset += textHeight;
       this.drawText(
          `Current Time: ${this.consumedTimeUnits}`,
          this.locX + 900,
          yOffset,
          textColor
       );
-      yOffset += textHeight; // Adjust the vertical spacing as needed
+      yOffset += textHeight;
       this.drawText(
          `Time Units: ${this.currentTimeUnits}`,
          this.locX + 900,
@@ -172,6 +179,7 @@ export default class Grid {
          textColor
       );
    }
+
    drawInfoBackground(x, y, width, height, cornerRadius, color) {
       this.potatoMap.ctx.font = '10pt "Bree Serif"';
       this.potatoMap.ctx.fillStyle = color;
@@ -182,7 +190,7 @@ export default class Grid {
 
    drawText(text, x, y, textColor) {
       this.potatoMap.ctx.font = '12pt "Bree Serif"';
-      this.potatoMap.ctx.fillStyle = textColor; // Black text color
+      this.potatoMap.ctx.fillStyle = textColor;
       this.potatoMap.ctx.fillText(text, x, y);
    }
 
@@ -244,7 +252,7 @@ export default class Grid {
    async drawTile(tile, tileX, tileY) {
       const image = await tile.getTileImage();
       this.potatoMap.ctx.drawImage(image, tileX, tileY, this.tilesW, this.tilesH);
-      tile.isChanged = true; // Set the flag to true indicating the tile has changed
+      tile.isChanged = true;
    }
 
    async drawMountain(tileX, tileY) {
@@ -375,51 +383,54 @@ export default class Grid {
 
    checkMissionsProgress() {
       let totalPoints = 0;
+
       if (this.tiles[GRID_SIZE - 1][GRID_SIZE - 1]) {
-         this.basicMissions.forEach((mission) => {
-            const progress = mission.checkProgress(this.tiles);
-            totalPoints += progress;
-            this.missionsPoints[mission.name] = progress;
+         const currentSeasonMissions = this.seasons[this.currentSeason].missions;
+         console.log(currentSeasonMissions);
+         console.log(this.missions);
+         currentSeasonMissions.forEach((missionKey) => {
+            const mission = this.basicMissions.find(
+               (m) => m.name === this.missions[missionKey].missionName
+            );
+            if (mission) {
+               const progress = mission.checkProgress(this.tiles);
+               totalPoints += progress;
+               this.missions[missionKey].points = progress;
+            }
          });
+
          this.seasons[this.currentSeason].points = this.calculateSeasonPoints(
             this.currentSeason,
             totalPoints
          );
-
-         // console.log('Missions Progress:', this.missionsPoints);
       }
    }
+
    checkForGameEnd() {
       if (this.currentElement.time > this.currentTimeUnits) return true;
-
-      for (let row = 0; row < GRID_SIZE; row++) {
-         for (let col = 0; col < GRID_SIZE; col++) {
-            if (this.checkIsElementPlacable({ row, col })) {
-               return true;
-            }
-         }
-      }
       return false;
    }
 
    calculateSeasonPoints(season, points) {
-      switch (season) {
-         case 'spring':
-            return points;
-         case 'summer':
-            return points - this.seasons.spring.points;
-         case 'autumn':
-            return points - (this.seasons.spring.points + this.seasons.summer.points);
-         case 'winter':
-            return (
-               points -
-               (this.seasons.spring.points +
-                  this.seasons.summer.points +
-                  this.seasons.autumn.points)
-            );
-         default:
-            break;
-      }
+      let sharedMissionsPoints = 0;
+
+      const previousSeasons = Object.keys(this.seasons).slice(
+         0,
+         Object.keys(this.seasons).indexOf(season)
+      );
+      previousSeasons.forEach((prevSeason) => {
+         const sharedMissions = this.seasons[prevSeason].missions.filter((mission) =>
+            this.seasons[season].missions.includes(mission)
+         );
+
+         sharedMissions.forEach((sharedMission) => {
+            sharedMissionsPoints -= this.missions[sharedMission].points;
+         });
+      });
+
+      const totalPoints = points + sharedMissionsPoints;
+
+      return totalPoints;
    }
 
    updateSeasonCycle() {
@@ -427,8 +438,12 @@ export default class Grid {
          if (Object.hasOwnProperty.call(this.seasons, season)) {
             const currentSeason = this.seasons[season];
             if (season == this.currentSeason) {
-               if (currentSeason.endTime < this.consumedTimeUnits) {
+               if (
+                  currentSeason.endTime < this.consumedTimeUnits ||
+                  this.currentElement.time > this.currentTimeUnits
+               ) {
                   const seasonsNames = Object.keys(this.seasons);
+                  this.checkMissionsProgress();
                   this.currentSeason = seasonsNames[seasonsNames.indexOf(season) + 1];
                }
             }
@@ -566,11 +581,9 @@ export default class Grid {
          for (let col = 0; col < GRID_SIZE; col++) {
             const tile = this.tiles[row][col];
 
-            // Check if the tile is null or has not changed
             if (tile && tile.isChanged) {
-               // If the tile has changed, update it
                await this.changeTile(col, row);
-               tile.isChanged = false; // Reset the flag
+               tile.isChanged = false;
             }
          }
       }

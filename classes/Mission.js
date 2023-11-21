@@ -9,11 +9,10 @@ class Mission {
    }
 
    async getImage() {
-      const image = await new Promise((resolve) => {
+      return new Promise((resolve) => {
          this.image.src = this.imageSrc;
          this.image.onload = () => resolve(this.image);
       });
-      return image;
    }
 
    checkProgress(tiles) {
@@ -36,29 +35,20 @@ class EdgeOfTheForestMission extends Mission {
       const numRows = tiles.length;
       const numCols = tiles[0].length;
 
-      // Check top and bottom edges
       for (let col = 0; col < numCols; col++) {
-         if (tiles[0][col].tileName === 'forest') {
-            points += this.points;
-         }
-         if (tiles[numRows - 1][col].tileName === 'forest') {
-            points += this.points;
-         }
+         if (tiles[0][col].tileName === 'forest') points += this.points;
+         if (tiles[numRows - 1][col].tileName === 'forest') points += this.points;
       }
 
-      // Check left and right edges
       for (let row = 0; row < numRows; row++) {
-         if (tiles[row][0].tileName === 'forest') {
-            points += this.points;
-         }
-         if (tiles[row][numCols - 1].tileName === 'forest') {
-            points += this.points;
-         }
+         if (tiles[row][0].tileName === 'forest') points += this.points;
+         if (tiles[row][numCols - 1].tileName === 'forest') points += this.points;
       }
 
       return points;
    }
 }
+
 class SleepyValleyMission extends Mission {
    constructor() {
       super(
@@ -74,13 +64,9 @@ class SleepyValleyMission extends Mission {
       for (let row = 0; row < tiles.length; row++) {
          let forestCount = 0;
          for (let col = 0; col < tiles[row].length; col++) {
-            if (tiles[row][col].tileName === 'forest') {
-               forestCount++;
-            }
+            if (tiles[row][col].tileName === 'forest') forestCount++;
          }
-         if (forestCount === 3) {
-            points += this.points;
-         }
+         if (forestCount === 3) points += this.points;
       }
       return points;
    }
@@ -101,22 +87,17 @@ class WateringPotatoesMission extends Mission {
       for (let row = 0; row < tiles.length; row++) {
          for (let col = 0; col < tiles[row].length; col++) {
             if (tiles[row][col].tileName === 'farm') {
-               // Check adjacent tiles for water fields
-               if (row > 0 && tiles[row - 1][col].tileName === 'water') {
+               if (row > 0 && tiles[row - 1][col].tileName === 'water')
                   points += this.points;
-               }
-               if (row < tiles.length - 1 && tiles[row + 1][col].tileName === 'water') {
+               if (row < tiles.length - 1 && tiles[row + 1][col].tileName === 'water')
                   points += this.points;
-               }
-               if (col > 0 && tiles[row][col - 1].tileName === 'water') {
+               if (col > 0 && tiles[row][col - 1].tileName === 'water')
                   points += this.points;
-               }
                if (
                   col < tiles[row].length - 1 &&
                   tiles[row][col + 1].tileName === 'water'
-               ) {
+               )
                   points += this.points;
-               }
             }
          }
       }
@@ -138,32 +119,17 @@ class BorderlandsMission extends Mission {
       let fullRows = 0;
       let fullCols = 0;
 
-      // Check for full rows
-      for (let row of tiles) {
-         if (row.every((tile) => tile.tileName !== 'empty')) {
-            fullRows++;
-         }
-      }
+      for (let row of tiles)
+         if (row.every((tile) => tile.tileName !== 'empty')) fullRows++;
 
-      // Check for full columns
       for (let col = 0; col < tiles[0].length; col++) {
          let isFull = true;
-         for (let row = 0; row < tiles.length; row++) {
-            if (tiles[row][col].tileName == 'empty') {
-               isFull = false;
-               break;
-            }
-         }
-         if (isFull) {
-            fullCols++;
-         }
+         for (let row = 0; row < tiles.length; row++)
+            if (tiles[row][col].tileName === 'empty') isFull = false;
+         if (isFull) fullCols++;
       }
 
-      // Calculate points based on full rows and columns
-      let points = (fullRows + fullCols) * this.points;
-
-      // Update collectedPoints property
-      return points;
+      return (fullRows + fullCols) * this.points;
    }
 }
 
@@ -179,7 +145,7 @@ class TreeLineMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Tree Line Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -195,7 +161,7 @@ class WateringCanalMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Watering Canal Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -211,7 +177,7 @@ class WealthyTownMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Wealthy Town Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -227,7 +193,7 @@ class MagiciansValleyMission extends Mission {
 
    checkProgress(tiles) {
       console.log("Checking progress for Magicians' Valley Mission");
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -243,7 +209,7 @@ class EmptySiteMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Empty Site Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -259,7 +225,7 @@ class TerracedHouseMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Terraced House Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -275,7 +241,7 @@ class OddNumberedSilosMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Odd Numbered Silos Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 
@@ -291,7 +257,7 @@ class RichCountrysideMission extends Mission {
 
    checkProgress(tiles) {
       console.log('Checking progress for Rich Countryside Mission');
-      // Implement your specific logic for this mission
+      // TODO: implement the logic for checking mission progress
    }
 }
 

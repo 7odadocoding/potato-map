@@ -21,12 +21,13 @@ export default class ElementGrid {
       this.grid = grid;
       Object.assign(this, DEFAULTS);
       this.currentElement = null;
-      this.elements = elements.map((elem) => new Element(elem.time, elem.type, elem.shape));
+      this.elements = elements.map(
+         (elem) => new Element(elem.time, elem.type, elem.shape)
+      );
       this.tileImages = {};
    }
 
    async preloadTileImages() {
-      // Preload tile images and store them in the dictionary
       await Promise.all(
          this.elements.map(async (element) => {
             const tile = new Tile(element.type);
@@ -38,7 +39,8 @@ export default class ElementGrid {
    drawRoundedRectangle() {
       const { posX, posY, cellWidth, cellHeight, cellMargin, padding } = this;
       const width = cellWidth * this.cols + cellMargin * (this.cols - 1) + 2.3 * padding;
-      const height = cellHeight * this.rows + cellMargin * (this.rows - 1) + 2.3 * padding;
+      const height =
+         cellHeight * this.rows + cellMargin * (this.rows - 1) + 2.3 * padding;
 
       this.ctx.beginPath();
       this.ctx.roundRect(posX - padding, posY - padding, width, height, 10);

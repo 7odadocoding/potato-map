@@ -26,7 +26,6 @@ export default class Element {
             const elementY = y + rowIndex * (cellHeight + cellMargin) + cellMargin;
 
             if (col) {
-               // Draw the preloaded tile image
                ctx.drawImage(
                   tileImages[this.type],
                   elementX,
